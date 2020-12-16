@@ -1,70 +1,95 @@
 /* TCPecho.c - main, TCPecho */
-
-#include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <errno.h>
+#include <unistd.h>
 
-int	TCPecho(const char *host, const char *service);
-int	errexit(const char *format, ...);
-int	connectTCP(const char *host, const char *service);
+#include "proto.h"
 
-#define	LINELEN		128
+int connectTCP(const char *host, const char *service);
+int TCPecho(const char *host, const char *service);
+int ft_main(const char *host, const char *service);
+
+#define LINELEN 128
+
+#define COMMAND_MAX 4
+#define STR_FORMAT_WITH_LEN(LEN) "%"#LEN"s"
 
 /*------------------------------------------------------------------------
  * main - TCP client for ECHO service
  *------------------------------------------------------------------------
  */
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-	char	*host = "localhost";	/* host to use if none supplied	*/
-	char	*service = "echo";	/* default service name		*/
+    switch (argc)
+    {
+    case 1:
+        return ft_main("localhost", SERVICE);
+    case 2:
+        return ft_main(argv[1], SERVICE);
+    case 3:
+        return ft_main(argv[1], argv[2]);
+    default:
+        fprintf(stderr, "usage: ft [host [port]]\n");
+        return 1;
+    }
+}
 
-	switch (argc) {
-	case 1:
-		host = "localhost";
-		break;
-	case 3:
-		service = argv[2];
-		/* FALL THROUGH */
-	case 2:
-		host = argv[1];
-		break;
-	default:
-		fprintf(stderr, "usage: TCPecho [host [port]]\n");
-		exit(1);
-	}
-	TCPecho(host, service);
-	exit(0);
+int ft_main(const char *host, const char *service)
+{
+    while (1)
+    {
+        printf("ft>");
+        char command[COMMAND_MAX + 1];
+        scanf(COMMAND_FORMAT, command);
+        if (strcmp("get", command))
+        {
+			char filename[FILENAME_LEN];
+
+        }
+        else if (strcmp("bye", command) || strcmp("quit", command))
+        {
+            return 0;
+        }
+        else
+        {
+            fprintf(stderr, "usage: get [path]          Download file\n");
+            fprintf(stderr, "       bye                 Quit ft\n");
+            fprintf(stderr, "       quit                Quit ft\n");
+        }
+    }
 }
 
 /*------------------------------------------------------------------------
  * TCPecho - send input to ECHO service on specified host and print reply
  *------------------------------------------------------------------------
  */
-int
-TCPecho(const char *host, const char *service)
+int TCPecho(const char *host, const char *service)
 {
-	char	buf[LINELEN+1];		/* buffer for one line of text	*/
-	int	s, n;			/* socket descriptor, read count*/
-	int	outchars, inchars;	/* characters sent and received	*/
+    char buf[LINELEN + 1]; /* buffer for one line of text	*/
+    int connected_ctrl_sock, n;              /* socket descriptor, read count*/
+    int outchars, inchars; /* characters sent and received	*/
 
-	s = connectTCP(host, service);
+    connected_ctrl_sock = connectTCP(host, service);
 
-	while (fgets(buf, sizeof(buf), stdin)) {
-		buf[LINELEN] = '\0';	/* insure line null-terminated	*/
-		outchars = strlen(buf);
-		(void) write(s, buf, outchars);
+    while (fgets(buf, sizeof(buf), stdin))
+    {
+        buf[LINELEN] = '\0'; /* insure line null-terminated	*/
+        outchars = strlen(buf);
+        (void)write(connected_ctrl_sock, buf, outchars);
 
-		/* read it back */
-		for (inchars = 0; inchars < outchars; inchars+=n ) {
-			n = read(s, &buf[inchars], outchars - inchars);
-			if (n < 0)
-				errexit("socket read failed: %s\n",
-					strerror(errno));
-		}
-		fputs(buf, stdout);
-	}
+        /* read it back */
+        for (inchars = 0; inchars < outchars; inchars += n)
+        {
+            n = read(connected_ctrl_sock, &buf[inchars], outchars - inchars);
+            if (n < 0)
+            {
+                fprintf(stderr, "socket read failed: %connected_ctrl_sock\n",
+                        strerror(errno));
+                return -1;
+            }
+        }
+        fputs(buf, stdout);
+    }
 }

@@ -1,4 +1,4 @@
-/* mpftpd.c - main, mpftpd */
+/* mpftd.c - main, mpftd */
 
 #define _USE_BSD
 #include <netinet/in.h>
@@ -23,9 +23,29 @@
 #define QLEN 32 /* maximum connection queue length	*/
 
 void reaper(int);
-int ftpd(int listened_sock, int accepted_ctrl_sock);
+int ftd(int listened_sock, int accepted_ctrl_sock);
 int passiveTCP(const char *service, int qlen);
-int mpftpd(const char *service)
+int mpftd(const char *service);
+
+/*------------------------------------------------------------------------
+ * main - Concurrent TCP server for ECHO service
+ *------------------------------------------------------------------------
+ */
+int main(int argc, char *argv[])
+{
+    switch (argc)
+    {
+    case 1:
+        return mpftd(SERVICE);
+    case 2:
+        return mpftd(argv[1]);
+    default:
+        fprintf(stderr, "usage: mpftd [port]\n");
+        return 1;
+    }
+}
+
+int mpftd(const char *service)
 {
     int listened_sock = passiveTCP(service, QLEN); /* master server socket		*/
 
@@ -45,7 +65,7 @@ int mpftpd(const char *service)
         {
         case 0: /* child */
         {
-            int return_code = ftpd(listened_sock, accepted_ctrl_sock);
+            int return_code = ftd(listened_sock, accepted_ctrl_sock);
             (void)close(accepted_ctrl_sock);
             (void)close(listened_sock);
             return return_code;
@@ -63,30 +83,21 @@ int mpftpd(const char *service)
 }
 
 /*------------------------------------------------------------------------
- * main - Concurrent TCP server for ECHO service
+ * reaper - clean up zombie children
  *------------------------------------------------------------------------
  */
-int main(int argc, char *argv[])
+void reaper(int sig)
 {
-    char *service = SERVICE; /* service name or port number	*/
-
-    switch (argc)
-    {
-    case 1:
-        return mpftpd(service);
-    case 2:
-        return mpftpd(argv[1]);
-    default:
-        fprintf(stderr, "usage: mpftpd [port]\n");
-        return 1;
-    }
+    int status;
+    while (wait3(&status, WNOHANG, (struct rusage *)0) > 0)
+        /* empty */;
 }
 
 /*------------------------------------------------------------------------
- * ftpd - echo data until end of file
+ * ftd - echo data until end of file
  *------------------------------------------------------------------------
  */
-int ftpd(int listened_sock, int accepted_ctrl_sock)
+int ftd(int listened_sock, int accepted_ctrl_sock)
 {
     do
     {
@@ -105,42 +116,23 @@ int ftpd(int listened_sock, int accepted_ctrl_sock)
             }
         }
 
-        int fd;
-        if (-1 == (fd = open(filename, O_RDONLY)))
+        int file;
+        if (-1 == (file = open(filename, O_RDONLY)))
         {
             char err_code = FOPEN_RETURNS_NULL;
             send(accepted_ctrl_sock, &err_code, sizeof(err_code), 0);
             break;
         }
-        struct stat stat_buf;
-        fstat(fd, &stat_buf);
-        send(accepted_ctrl_sock, &stat_buf.st_size, sizeof(stat_buf.st_size), 0);
+        struct stat file_stat;
+        fstat(file, &file_stat);
+        send(accepted_ctrl_sock, &file_stat.st_size, sizeof(file_stat.st_size), 0);
 
         int accepted_file_sock = accept(listened_sock, NULL, NULL);
-        sendfile(accepted_file_sock, fd, NULL, stat_buf.st_size);
+        sendfile(accepted_file_sock, file, NULL, file_stat.st_size);
         close(accepted_file_sock);
 
-        close(fd);
+        close(file);
 
     } while (1);
-
-    // while (cc = read(accepted_ctrl_sock, buf, sizeof buf)) {
-    // 	if (cc < 0)
-    // 		errexit("echo read: %s\n", strerror(errno));
-    // 	if (write(accepted_ctrl_sock, buf, cc) < 0)
-    // 		errexit("echo write: %s\n", strerror(errno));
-    // }
     return 0;
-}
-
-/*------------------------------------------------------------------------
- * reaper - clean up zombie children
- *------------------------------------------------------------------------
- */
-void reaper(int sig)
-{
-    int status;
-
-    while (wait3(&status, WNOHANG, (struct rusage *)0) > 0)
-        /* empty */;
 }
