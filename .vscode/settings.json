@@ -1,4 +1,21 @@
 {
     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 4, TabWidth: 4, BreakBeforeBraces: Allman, AllowShortIfStatementsOnASingleLine: false, IndentCaseLabels: false, ColumnLimit: 0, AccessModifierOffset: -4 }",
-    "C_Cpp.default.cStandard": "gnu17"
+    "C_Cpp.default.cStandard": "gnu17",
+    "files.associations": {
+        "*.proto": "plaintext",
+        "climits": "c",
+        "cmath": "c",
+        "compare": "c",
+        "concepts": "c",
+        "cstdarg": "c",
+        "cstdio": "c",
+        "cstdlib": "c",
+        "exception": "c",
+        "type_traits": "c",
+        "limits": "c",
+        "new": "c",
+        "*.tcc": "c",
+        "cstdint": "c",
+        "typeinfo": "c"
+    }
 }

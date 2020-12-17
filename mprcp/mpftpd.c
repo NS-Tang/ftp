@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,11 +117,11 @@ int ftd(int listened_sock, int accepted_ctrl_sock)
             }
         }
 
-        int file;
-        if (-1 == (file = open(filename, O_RDONLY)))
+        int file = open(filename, O_RDONLY);
+        char ctrl_code = file >> (sizeof(file) - 1) * CHAR_BIT;
+        send(accepted_ctrl_sock, &ctrl_code, sizeof(ctrl_code), 0);
+        if (-1 == file)
         {
-            char err_code = FOPEN_RETURNS_NULL;
-            send(accepted_ctrl_sock, &err_code, sizeof(err_code), 0);
             break;
         }
         struct stat file_stat;
