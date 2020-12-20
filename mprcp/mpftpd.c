@@ -102,9 +102,9 @@ int ftd(int listened_sock, int accepted_ctrl_sock)
 {
     do
     {
-        char filename[FILENAME_LEN];
-        const char *end = &filename + 1;
-        for (char *iter = filename;; ++iter)
+        Filename remote;
+        const char *end = &remote + 1;
+        for (char *iter = remote;; ++iter)
         {
             recv(accepted_ctrl_sock, iter, sizeof(*iter), 0);
             if (*iter == '\0')
@@ -117,22 +117,22 @@ int ftd(int listened_sock, int accepted_ctrl_sock)
             }
         }
 
-        int file = open(filename, O_RDONLY);
-        char ctrl_code = file >> (sizeof(file) - 1) * CHAR_BIT;
-        send(accepted_ctrl_sock, &ctrl_code, sizeof(ctrl_code), 0);
-        if (-1 == file)
+        int remote_fd = open(remote, O_RDONLY);
+        char ctrl_code = remote_fd >> (sizeof(remote_fd) - 1) * CHAR_BIT;
+        send(accepted_ctrl_sock, &ctrl_code, 1, 0);
+        if (-1 == remote_fd)
         {
             break;
         }
         struct stat file_stat;
-        fstat(file, &file_stat);
+        fstat(remote_fd, &file_stat);
         send(accepted_ctrl_sock, &file_stat.st_size, sizeof(file_stat.st_size), 0);
 
         int accepted_file_sock = accept(listened_sock, NULL, NULL);
-        sendfile(accepted_file_sock, file, NULL, file_stat.st_size);
+        sendfile(accepted_file_sock, remote_fd, NULL, file_stat.st_size);
         close(accepted_file_sock);
 
-        close(file);
+        close(remote_fd);
 
     } while (1);
     return 0;

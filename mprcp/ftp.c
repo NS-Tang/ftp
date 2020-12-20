@@ -1,7 +1,9 @@
 /* TCPecho.c - main, TCPecho */
+#include <sys/mman.h>
 #include <sys/socket.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +11,8 @@
 
 #include "proto.h"
 
+void local_append_name(const Filename remote, Filename local);
+int ft(const char *, const char *, int, const Filename, const Filename);
 int connectTCP(const char *host, const char *service);
 int TCPecho(const char *host, const char *service);
 int ft_main(const char *host, const char *service);
@@ -19,7 +23,6 @@ int ft_main(const char *host, const char *service);
 #define _TOSTR(LEN) #LEN
 #define TOSTR(LEN) _TOSTR(LEN)
 
-void ft(const char *, const char *, int, const char[FILENAME_LEN + 1], const char[FILENAME_LEN + 1]);
 
 /*------------------------------------------------------------------------
  * main - TCP client for ECHO service
@@ -51,13 +54,21 @@ int ft_main(const char *host, const char *service)
         scanf("%" TOSTR(COMMAND_MAX) "s", command);
         if (strcmp("get", command))
         {
-            char filename[FILENAME_LEN + 1];
-            char lfilename[FILENAME_LEN + 1];
-            if (2 != scanf("%" TOSTR(FILENAME_LEN) "s %" TOSTR(FILENAME_LEN) "s", filename, lfilename))
+            Filename remote;
+            Filename local;
+            switch (2 != scanf("%" TOSTR(FILENAME_LEN) "s %" TOSTR(FILENAME_LEN) "s", remote, local))
             {
-                fputs(stderr, "usage: get [remote file (path and )name] [local file (path and )name]\n");
+            case 2:
+                local_append_name(remote, local);
+                ft(host, service, ctrl_sock, remote, local);
+                break;
+            case 1:
+                ft(host, service, ctrl_sock, remote, "./");
+                break;
+            default:
+                fputs(stderr, "You must specify at least one path after a get command.\n");
+                break;
             }
-            ft(host, service, ctrl_sock, filename, lfilename);
         }
         else if (strcmp("bye", command) || strcmp("quit", command) || strcmp("exit", command))
         {
@@ -83,24 +94,48 @@ int ft_main(const char *host, const char *service)
     }
 }
 
-void ft(
+int ft(
     const char *host,
     const char *service,
     int ctrl_sock,
-    const char filename[FILENAME_LEN + 1],
-    const char lfilename[FILENAME_LEN + 1])
+    const Filename remote,
+    const Filename local)
 {
-    send(ctrl_sock, filename, strchr(filename, '\0'), 0);
-    char ctrl_code;
-    recv(ctrl_sock, &ctrl_code, sizeof(ctrl_code), 0);
-    if ('\377' == ctrl_code)
+    int local_fd = open(local, O_CREAT | O_WRONLY);
+    if(local_fd == -1)
     {
-        fprintf(stderr, "Error in open the file \"%s\" at server", filename);
+        fprintf(stderr, "Error in open \"%s\" in local\n", local);
+        return -1;
+    }
+
+    send(ctrl_sock, remote, strchr(remote, '\0') - remote, 0);
+    char ctrl_code;
+    recv(ctrl_sock, &ctrl_code, 1, 0);
+    if ('\xff' == ctrl_code)
+    {
+        fprintf(stderr, "Error in open \"%s\" in remote\n", remote);
         return;
     }
+
+    off_t st_size;
+    recv(ctrl_sock, st_size, sizof(st_size), 0);
+    ftruncate(local_fd, st_size);
+
     int file_sock = connectTCP(host, service);
-    
+    void *local_map= NULL;
+    mmap(local_map, st_size, PROT_WRITE, MAP_PRIVATE, local_fd, 0);
+    printf("Fetching %s to %s\n", remote, local);
+    for (ssize_t offset = 0; offset < st_size; offset += recv(file_sock, local_map, st_size, 0))
+        ;
+    printf("%s                                     100%%\n", remote);
     close(file_sock);
+
+    close(local_fd);
+}
+
+void local_append_name(const Filename remote, Filename local)
+{
+
 }
 
     /*------------------------------------------------------------------------
