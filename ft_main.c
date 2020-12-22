@@ -1,4 +1,5 @@
 /* TCPecho.c - main, TCPecho */
+#include <arpa/inet.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 
@@ -70,6 +71,7 @@ int ft_main(const char *host, const char *ctrl_service, const char *file_service
         }
         else if (!(strcmp("bye", command) && strcmp("quit", command) && strcmp("exit", command)))
         {
+            send(ctrl_sock, '\0', 1, 0);
             close(ctrl_sock);
             return 0;
         }
@@ -101,12 +103,6 @@ void ft(
     const Filename remote,
     const Filename local)
 {
-    int local_fd = open(local, O_CREAT | O_RDWR, 0664);
-    if (local_fd == -1)
-    {
-        fprintf(stderr, "Error in open \"%s\" in local: %s\n", local, strerror(errno));
-        return;
-    }
 
     send(ctrl_sock, remote, strchr(remote, '\0') - remote + 1, 0);
     char ctrl_code;
@@ -117,8 +113,16 @@ void ft(
         return;
     }
 
-    off_t st_size;
-    recv(ctrl_sock, &st_size, sizeof(st_size), 0);
+    int local_fd = open(local, O_CREAT | O_RDWR, 0664);
+    if (local_fd == -1)
+    {
+        fprintf(stderr, "Error in open \"%s\" in local: %s\n", local, strerror(errno));
+        return;
+    }
+    off_t st_size_be;
+    recv(ctrl_sock, &st_size_be, sizeof(st_size_be), MSG_WAITALL);
+    off_t st_size = be64toh(st_size);
+
     ftruncate(local_fd, st_size);
 
     char *const local_map = mmap(NULL, st_size, PROT_WRITE, MAP_SHARED, local_fd, 0);

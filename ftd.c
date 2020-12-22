@@ -1,5 +1,6 @@
 #include <limits.h>
 
+#include <endian.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
@@ -19,12 +20,19 @@ int ftd(int listened_file_sock, int accepted_ctrl_sock)
     {
         Filename remote;
         const char *end = (const char *)(&remote + 1);
-        for (char *iter = remote;; ++iter)
+        for (char *iter = remote;;)
         {
-            recv(accepted_ctrl_sock, iter, sizeof(*iter), 0);
-            if (*iter == '\0')
+            iter += recv(accepted_ctrl_sock, iter, end - iter, 0);
+            if (iter[-1] == '\0')
             {
-                break;
+                if (iter != remote + 1)
+                {
+                    break;
+                }
+                else
+                {
+                    return 0;
+                }
             }
             if (iter == end)
             {
@@ -37,17 +45,19 @@ int ftd(int listened_file_sock, int accepted_ctrl_sock)
         if (-1 == remote_fd)
         {
             ctrl_code = errno;
-            break;
+            send(accepted_ctrl_sock, &ctrl_code, sizeof(ctrl_code), 0);
+            continue;
         }
         else
         {
             ctrl_code = 0;
+            send(accepted_ctrl_sock, &ctrl_code, sizeof(ctrl_code), 0);
         }
-        send(accepted_ctrl_sock, &ctrl_code, sizeof(ctrl_code), 0);
 
         struct stat file_stat;
         fstat(remote_fd, &file_stat);
-        send(accepted_ctrl_sock, &file_stat.st_size, sizeof(file_stat.st_size), 0);
+        off_t st_size_be = htobe64(file_stat.st_size);
+        send(accepted_ctrl_sock, &st_size_be, sizeof(st_size_be), 0);
 
         int accepted_file_sock = accept(listened_file_sock, NULL, NULL);
         sendfile(accepted_file_sock, remote_fd, NULL, file_stat.st_size);
@@ -56,5 +66,4 @@ int ftd(int listened_file_sock, int accepted_ctrl_sock)
         close(remote_fd);
 
     } while (1);
-    return 0;
 }
