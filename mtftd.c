@@ -30,7 +30,7 @@ void *ftd_start_routine(void *args)
             if (errno == EINTR)
                 continue;
             fprintf(stderr, "accept: %s\n", strerror(errno));
-            return NULL;
+            continue;
         }
         ftd(arg->listened_file_sock, accepted_ctrl_sock);
     }
@@ -47,10 +47,15 @@ int mftd(const char *ctrl_service, const char *file_service)
     pthread_t thread_array[THREAD_ARRAY_LEN];
     pthread_t *const end = (pthread_t *)(&thread_array + 1);
 
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     for (pthread_t *iter = thread_array; iter != end; ++iter)
     {
         pthread_create(iter, NULL, ftd_start_routine, &arg);
     }
-    wait(NULL);
+    pthread_attr_destroy(&attr);
+    while (1)
+        ;
     return 0;
 }
