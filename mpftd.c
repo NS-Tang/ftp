@@ -14,22 +14,22 @@
 #include "mftd.h"
 #include "proto.h"
 
-
 #define QLEN 32 /* maximum connection queue length	*/
 
 void reaper(int);
 int passiveTCP(const char *service, int qlen);
 
-
 int mftd(const char *ctrl_service, const char *file_service)
 {
-    int listened_ctrl_sock = passiveTCP(ctrl_service, QLEN); /* master server socket		*/
+    // 监听文件和控制两个端口
+    int listened_ctrl_sock = passiveTCP(ctrl_service, QLEN);
     int listened_file_sock = passiveTCP(file_service, QLEN);
-
+    // 注册信号处理函数
     (void)signal(SIGCHLD, reaper);
 
     while (1)
     {
+        // accept控制socket
         int accepted_ctrl_sock = accept(listened_ctrl_sock, NULL, NULL); /* slave server socket		*/
         if (accepted_ctrl_sock < 0)
         {
@@ -42,6 +42,7 @@ int mftd(const char *ctrl_service, const char *file_service)
         {
         case 0: /* child */
         {
+            // 调用一个客户端
             int return_code = ftd(listened_file_sock, accepted_ctrl_sock);
             (void)close(accepted_ctrl_sock);
             (void)close(listened_file_sock);
@@ -49,6 +50,7 @@ int mftd(const char *ctrl_service, const char *file_service)
             return return_code;
         }
         default: /* parent */
+            // 继续循环创造进程
             (void)close(accepted_ctrl_sock);
             break;
         case -1:

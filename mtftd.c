@@ -22,6 +22,9 @@ typedef struct
     int listened_ctrl_sock;
 } FtdArg;
 
+/**
+ * 一个简单的循环服务端
+ */
 void *ftd_start_routine(void *args)
 {
     const FtdArg *arg = (const FtdArg *)args;
@@ -45,20 +48,26 @@ int mftd(const char *ctrl_service, const char *file_service)
 
     FtdArg arg;
 
-    arg.listened_ctrl_sock = passiveTCP(ctrl_service, QLEN); /* master server socket		*/
+    // 监听文件和控制端口
+    arg.listened_ctrl_sock = passiveTCP(ctrl_service, QLEN);
     arg.listened_file_sock = passiveTCP(file_service, QLEN);
 
+    // 线程池
     pthread_t thread_array[THREAD_ARRAY_LEN];
+    // 线程池末尾之后
     pthread_t *const end = (pthread_t *)(&thread_array + 1);
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
+    // 设置线程属性为detached
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    // 创建固定数线程
     for (pthread_t *iter = thread_array; iter != end; ++iter)
     {
         pthread_create(iter, NULL, ftd_start_routine, &arg);
     }
     pthread_attr_destroy(&attr);
+    // 等待进程终止信号
     while (1)
         ;
     return 0;

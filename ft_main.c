@@ -1,4 +1,3 @@
-/* TCPecho.c - main, TCPecho */
 #include <arpa/inet.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
@@ -49,16 +48,20 @@ int ft(const char *host, const char *ctrl_service, const char *file_service)
     {
         printf("ft> ");
         char command[COMMAND_MAX + 1];
-        int quit;
+        // 输入命令，指定宽度上限为COMMAND_MAX
         scanf("%" TOSTR(COMMAND_MAX) "s", command);
+        // 输入的第一个词是"get"
         if (!strcmp("get", command))
         {
             Filename remote;
             Filename local;
+            // 输入两个文件名
             switch (scanf("%" TOSTR(FILENAME_LEN) "s %" TOSTR(FILENAME_LEN) "s", remote, local))
             {
             case 2:
+                // 空函数，本用与连接文件名和路径，可以不实现
                 local_append_name(remote, local);
+                // 调用一次ft
                 ft_once(host, ctrl_service, file_service, ctrl_sock, remote, local);
                 break;
             // case 1:
@@ -69,12 +72,14 @@ int ft(const char *host, const char *ctrl_service, const char *file_service)
                 break;
             }
         }
+        // 退出ft
         else if (!(strcmp("bye", command) && strcmp("quit", command) && strcmp("exit", command)))
         {
             send(ctrl_sock, "", 1, 0);
             close(ctrl_sock);
             break;
         }
+        // 显示帮助
         else if (!strcmp("help", command))
         {
             const char help[] =
@@ -86,16 +91,28 @@ int ft(const char *host, const char *ctrl_service, const char *file_service)
                 "quit                               Quit ft\n";
             fputs(help, stderr);
         }
+        // 错误命令
         else
         {
             fputs("Invalid command.\n", stderr);
         }
+        // 万能清空缓冲区语句
+        int quit;
         while (quit = getchar() != '\n' && quit != EOF)
             ;
     }
     return 0;
 }
 
+/** 
+ * 做一次文件传输
+ * @param host         指定本地文件名
+ * @param ctrl_service 控制端口
+ * @param file_service 文件端口
+ * @param ctrl_sock    控制socket
+ * @param remote       要访问服务端的文件名
+ * @param local        要存储客户端的文件名
+ */
 void ft_once(
     const char *host,
     const char *ctrl_service,
@@ -147,7 +164,9 @@ void ft_once(
 
     close(local_fd);
 }
-
+/**
+ * 未实现
+ */
 void local_append_name(const Filename remote, Filename local)
 {
     // 可以在这里实现将remote中的文件名连接到local中的路径上
