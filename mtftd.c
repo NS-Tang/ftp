@@ -4,10 +4,13 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "ftd.h"
 #include "mftd.h"
 #include "proto.h"
+
+#define QLEN 32 /* maximum connection queue length	*/
 
 static size_t THREAD_ARRAY_LEN = 1 << 3;
 
@@ -24,7 +27,7 @@ void *ftd_start_routine(void *args)
     const FtdArg *arg = (const FtdArg *)args;
     while (1)
     {
-        int accepted_ctrl_sock = accept(arg->listened_ctrl_sock, NULL, NULL); /* slave server socket		*/
+        int accepted_ctrl_sock = accept(arg->listened_ctrl_sock, NULL, NULL);
         if (accepted_ctrl_sock < 0)
         {
             if (errno == EINTR)
@@ -33,6 +36,7 @@ void *ftd_start_routine(void *args)
             continue;
         }
         ftd(arg->listened_file_sock, accepted_ctrl_sock);
+        close(accepted_ctrl_sock);
     }
 }
 

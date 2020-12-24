@@ -15,6 +15,8 @@
 #include "proto.h"
 
 
+#define QLEN 32 /* maximum connection queue length	*/
+
 void reaper(int);
 int passiveTCP(const char *service, int qlen);
 
@@ -69,8 +71,3 @@ void reaper(int sig)
     while (wait3(&status, WNOHANG, (struct rusage *)0) > 0)
         /* empty */;
 }
-
-/*------------------------------------------------------------------------
- * ftd - echo data until end of file
- *------------------------------------------------------------------------
- */

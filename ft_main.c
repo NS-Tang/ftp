@@ -13,10 +13,10 @@
 #include "proto.h"
 
 void local_append_name(const Filename remote, Filename local);
-void ft(const char *, const char *, const char *, int, const Filename, const Filename);
+void ft_once(const char *, const char *, const char *, int, const Filename, const Filename);
 int connectTCP(const char *host, const char *service);
 int TCPecho(const char *host, const char *service);
-int ft_main(const char *, const char *, const char *);
+int ft(const char *, const char *, const char *);
 
 #define COMMAND_MAX 4
 #define _TOSTR(LEN) #LEN
@@ -31,18 +31,18 @@ int main(int argc, char *argv[])
     switch (argc)
     {
     case 1:
-        return ft_main("localhost", CTRL_SERVICE, FILE_SERVICE);
+        return ft("localhost", CTRL_SERVICE, FILE_SERVICE);
     case 2:
-        return ft_main(argv[1], CTRL_SERVICE, FILE_SERVICE);
+        return ft(argv[1], CTRL_SERVICE, FILE_SERVICE);
     case 4:
-        return ft_main(argv[1], argv[2], argv[3]);
+        return ft(argv[1], argv[2], argv[3]);
     default:
         fprintf(stderr, "usage: %s [host [control port] [file port]]\n", argv[0]);
         return 1;
     }
 }
 
-int ft_main(const char *host, const char *ctrl_service, const char *file_service)
+int ft(const char *host, const char *ctrl_service, const char *file_service)
 {
     int ctrl_sock = connectTCP(host, ctrl_service);
     while (1)
@@ -59,13 +59,13 @@ int ft_main(const char *host, const char *ctrl_service, const char *file_service
             {
             case 2:
                 local_append_name(remote, local);
-                ft(host, ctrl_service, file_service, ctrl_sock, remote, local);
+                ft_once(host, ctrl_service, file_service, ctrl_sock, remote, local);
                 break;
-            case 1:
-                ft(host, ctrl_service, file_service, ctrl_sock, remote, "./");
-                break;
+            // case 1:
+            //     ft_once(host, ctrl_service, file_service, ctrl_sock, remote, "./");
+            //     break;
             default:
-                fputs("You must specify at least one path after a get command.\n", stderr);
+                fputs("You must specify two path after a get command.\n", stderr);
                 break;
             }
         }
@@ -73,7 +73,7 @@ int ft_main(const char *host, const char *ctrl_service, const char *file_service
         {
             send(ctrl_sock, "", 1, 0);
             close(ctrl_sock);
-            return 0;
+            break;
         }
         else if (!strcmp("help", command))
         {
@@ -93,9 +93,10 @@ int ft_main(const char *host, const char *ctrl_service, const char *file_service
         while (quit = getchar() != '\n' && quit != EOF)
             ;
     }
+    return 0;
 }
 
-void ft(
+void ft_once(
     const char *host,
     const char *ctrl_service,
     const char *file_service,
@@ -149,4 +150,6 @@ void ft(
 
 void local_append_name(const Filename remote, Filename local)
 {
+    // 可以在这里实现将remote中的文件名连接到local中的路径上
+    // 若不实现则local必须指定完整文件名
 }
