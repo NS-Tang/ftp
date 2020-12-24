@@ -71,7 +71,7 @@ int ft_main(const char *host, const char *ctrl_service, const char *file_service
         }
         else if (!(strcmp("bye", command) && strcmp("quit", command) && strcmp("exit", command)))
         {
-            send(ctrl_sock, '\0', 1, 0);
+            send(ctrl_sock, "", 1, 0);
             close(ctrl_sock);
             return 0;
         }
@@ -121,7 +121,7 @@ void ft(
     }
     off_t st_size_be;
     recv(ctrl_sock, &st_size_be, sizeof(st_size_be), MSG_WAITALL);
-    off_t st_size = be64toh(st_size);
+    off_t st_size = be64toh(st_size_be);
 
     ftruncate(local_fd, st_size);
 
