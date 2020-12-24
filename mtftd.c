@@ -30,6 +30,7 @@ void *ftd_start_routine(void *args)
     const FtdArg *arg = (const FtdArg *)args;
     while (1)
     {
+        // 建立控制socket连接
         int accepted_ctrl_sock = accept(arg->listened_ctrl_sock, NULL, NULL);
         if (accepted_ctrl_sock < 0)
         {
@@ -38,7 +39,9 @@ void *ftd_start_routine(void *args)
             fprintf(stderr, "accept: %s\n", strerror(errno));
             continue;
         }
+        // 执行单个服务器
         ftd(arg->listened_file_sock, accepted_ctrl_sock);
+        // 关闭控制socket连接
         close(accepted_ctrl_sock);
     }
 }

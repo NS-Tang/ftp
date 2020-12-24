@@ -122,27 +122,30 @@ void ft_once(
     const Filename local)
 {
 
+    // 发送文件名，节省流量不发送字符串末尾之后的部分
     send(ctrl_sock, remote, strchr(remote, '\0') - remote + 1, 0);
     char ctrl_code;
+    // 接收打开文件错误码
     recv(ctrl_sock, &ctrl_code, sizeof(ctrl_code), 0);
     if (ctrl_code)
     {
         fprintf(stderr, "Error in open \"%s\" in remote: %s\n", remote, strerror(ctrl_code));
         return;
     }
-
+    // 创建/打开文件
     int local_fd = open(local, O_CREAT | O_RDWR, 0664);
     if (local_fd == -1)
     {
         fprintf(stderr, "Error in open \"%s\" in local: %s\n", local, strerror(errno));
         return;
     }
+    // 接收文件大小
     off_t st_size_be;
     recv(ctrl_sock, &st_size_be, sizeof(st_size_be), MSG_WAITALL);
     off_t st_size = be64toh(st_size_be);
-
+    // 改变文件大小
     ftruncate(local_fd, st_size);
-
+    // 建立文件与内存的映射
     char *const local_map = mmap(NULL, st_size, PROT_WRITE, MAP_SHARED, local_fd, 0);
     if (local_map == MAP_FAILED)
     {
@@ -150,15 +153,17 @@ void ft_once(
         fprintf(stderr, "Error in mmap to %s: %s\n", local, strerror(errno));
         return;
     }
-
+    // 连接文件socket
     int file_sock = connectTCP(host, file_service);
     printf("Fetching %s to %s\n", remote, local);
+    // 接收文件，写入映射内存
     char *const end = local_map + st_size;
     for (char *iter = local_map; iter < end;)
     {
         iter += recv(file_sock, iter, end - iter, 0);
     }
     printf("%s                                     100%%\n", remote);
+    // 释放资源
     munmap(local_map, st_size);
     close(file_sock);
 
